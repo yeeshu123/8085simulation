@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>8085 Traning Kit Simulation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>8085 Pro Trainer - Mobile Compatible</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Inter:wght@400;700&family=JetBrains+Mono:wght@500&display=swap');
 
@@ -25,24 +26,26 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
+            padding: 10px;
         }
 
         .trainer-case {
             background-color: var(--panel-bg);
-            padding: 40px;
+            padding: 20px;
             border-radius: 24px;
             box-shadow: 0 50px 100px rgba(0,0,0,0.9);
             border: 1px solid #2a2a2a;
             display: flex;
             flex-direction: column;
-            gap: 25px;
-            width: 900px;
+            gap: 20px;
+            width: 100%;
+            max-width: 900px;
         }
 
-        /* 1:1 DISPLAY REPLICA */
+        /* 1:1 DISPLAY REPLICA - Scaled for Mobile */
         .display-section {
             background: #000;
-            height: 140px;
+            height: 100px;
             border-radius: 12px;
             border: 2px solid #333;
             display: flex;
@@ -54,12 +57,11 @@
         .led-digits {
             font-family: 'Orbitron', sans-serif;
             color: var(--text-neon);
-            font-size: 64px;
-            letter-spacing: 15px;
+            font-size: clamp(32px, 8vw, 64px);
+            letter-spacing: clamp(5px, 2vw, 15px);
             text-shadow: 0 0 20px rgba(255, 46, 46, 0.4);
         }
 
-        /* STATUS HUD */
         .status-hud {
             background: rgba(0,0,0,0.3);
             border: 1px solid #333;
@@ -68,34 +70,40 @@
             text-align: center;
             color: var(--status-gold);
             font-family: 'JetBrains Mono', monospace;
-            font-size: 14px;
+            font-size: 12px;
             letter-spacing: 1px;
             text-transform: uppercase;
         }
 
         .main-layout {
             display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 30px;
-        }
-
-        /* KEYPADS */
-        .keypads {
-            display: flex;
+            grid-template-columns: 1fr;
             gap: 20px;
         }
 
-        .grid {
-            display: grid;
-            gap: 12px;
+        /* Desktop Layout Override */
+        @media (min-width: 800px) {
+            .main-layout { grid-template-columns: 2fr 1fr; }
+            .trainer-case { padding: 40px; }
+            .display-section { height: 140px; }
         }
 
+        .keypads {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        @media (min-width: 600px) {
+            .keypads { flex-direction: row; }
+        }
+
+        .grid { display: grid; gap: 10px; flex: 1; }
         .grid-blue { grid-template-columns: repeat(3, 1fr); }
         .grid-hex { grid-template-columns: repeat(4, 1fr); }
 
         .btn {
-            width: 75px;
-            height: 65px;
+            height: 60px;
             border: none;
             border-radius: 8px;
             color: white;
@@ -116,37 +124,36 @@
         .btn-dark { background: var(--btn-dark); box-shadow: 0 5px 0 #000; }
         .btn-orange { background: var(--btn-orange); box-shadow: 0 5px 0 #8c320f; }
 
-        /* CPU STATE PANEL */
         .state-panel {
             background: rgba(255,255,255,0.03);
             border-radius: 12px;
-            padding: 20px;
+            padding: 15px;
             border: 1px solid #333;
         }
 
-        .state-title { font-size: 12px; color: #666; margin-bottom: 15px; }
+        .state-title { font-size: 11px; color: #666; margin-bottom: 10px; }
 
         .reg-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             font-family: 'JetBrains Mono', monospace;
             font-size: 14px;
             border-bottom: 1px solid #222;
-            padding-bottom: 5px;
+            padding-bottom: 4px;
         }
 
         .reg-row span { color: #888; }
 
         .clear-ram {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             background: #3d1414;
             border: none;
             color: #ff5252;
             border-radius: 6px;
             cursor: pointer;
-            margin-top: 15px;
+            margin-top: 10px;
             font-size: 11px;
             font-weight: 700;
         }
@@ -221,7 +228,7 @@
 <script>
     let ram = new Uint8Array(65536);
     let cpu = { a:0, b:0, c:0, h:0, l:0, f:0, pc:0x2000 };
-    let mode = "BOOT"; // BOOT, SET_ADDR, EDITING, GO_SET
+    let mode = "BOOT"; 
     let buffer = "";
     let activeAddr = 0x2000;
 
@@ -244,7 +251,6 @@
             hud.innerText = `EDITING MEMORY | MNEM: ${opcodes[d] || "--"}`;
         }
 
-        // Update Panel
         document.getElementById('r-a').innerText = cpu.a.toString(16).toUpperCase().padStart(2, "0");
         document.getElementById('r-b').innerText = cpu.b.toString(16).toUpperCase().padStart(2, "0");
         document.getElementById('r-pc').innerText = activeAddr.toString(16).toUpperCase().padStart(4, "0");
@@ -285,12 +291,12 @@
         cpu.pc = start;
         let limit = 0;
         while(limit < 500) {
-            let op = ram[cpu.pc++];
-            if(op === 0x3E) cpu.a = ram[cpu.pc++];
-            else if(op === 0x06) cpu.b = ram[cpu.pc++];
-            else if(op === 0x80) cpu.a = (cpu.a + cpu.b) & 0xFF;
-            else if(op === 0x32) { let l=ram[cpu.pc++]; let h=ram[cpu.pc++]; ram[(h<<8)|l] = cpu.a; }
-            else if(op === 0x76) break;
+            let o = ram[cpu.pc++];
+            if(o === 0x3E) cpu.a = ram[cpu.pc++];
+            else if(o === 0x06) cpu.b = ram[cpu.pc++];
+            else if(o === 0x80) cpu.a = (cpu.a + cpu.b) & 0xFF;
+            else if(o === 0x32) { let l=ram[cpu.pc++]; let h=ram[cpu.pc++]; ram[(h<<8)|l] = cpu.a; }
+            else if(o === 0x76) break;
             limit++;
         }
         activeAddr = cpu.pc - 1;
