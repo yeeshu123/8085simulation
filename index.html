@@ -2,10 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>8085 SIMULATOR </title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>8085 SIMULATOR</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Inter:wght@400;700&family=JetBrains+Mono:wght@500&display=swap');
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
 
         :root {
             --bg-main: #0a0c0b;
@@ -26,26 +31,61 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            padding: 10px;
+            padding: clamp(5px, 2vw, 10px);
+            overflow-x: hidden;
         }
 
         .trainer-case {
             background-color: var(--panel-bg);
-            padding: 20px;
-            border-radius: 24px;
-            box-shadow: 0 50px 100px rgba(0,0,0,0.9);
+            padding: clamp(15px, 4vw, 40px);
+            border-radius: clamp(16px, 4vw, 24px);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.9);
             border: 1px solid #2a2a2a;
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: clamp(12px, 2vh, 20px);
             width: 100%;
             max-width: 900px;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            width: 100%;
+            flex-wrap: wrap;
+        }
+
+        .top-btn {
+            background: #1e1e1e;
+            color: #888;
+            border: 1px solid #333;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-family: 'Inter', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .top-btn:active {
+            background: #333;
+            color: white;
+        }
+
+        .clear-btn {
+            color: #ff5252;
+            background: #2a0e0e;
         }
 
         /* 1:1 DISPLAY REPLICA - Scaled for Mobile */
         .display-section {
             background: #000;
-            height: 100px;
+            height: clamp(60px, 12vh, 100px);
             border-radius: 12px;
             border: 2px solid #333;
             display: flex;
@@ -57,20 +97,20 @@
         .led-digits {
             font-family: 'Orbitron', sans-serif;
             color: var(--text-neon);
-            font-size: clamp(32px, 8vw, 64px);
-            letter-spacing: clamp(5px, 2vw, 15px);
+            font-size: clamp(24px, 7vw, 64px);
+            letter-spacing: clamp(3px, 1.5vw, 15px);
             text-shadow: 0 0 20px rgba(255, 46, 46, 0.4);
         }
 
         .status-hud {
             background: rgba(0,0,0,0.3);
             border: 1px solid #333;
-            padding: 10px;
+            padding: clamp(6px, 1.5vw, 10px);
             border-radius: 6px;
             text-align: center;
             color: var(--status-gold);
             font-family: 'JetBrains Mono', monospace;
-            font-size: 12px;
+            font-size: clamp(9px, 2.5vw, 12px);
             letter-spacing: 1px;
             text-transform: uppercase;
         }
@@ -78,47 +118,48 @@
         .main-layout {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 20px;
+            gap: clamp(12px, 2vh, 20px);
         }
 
         /* Desktop Layout Override */
         @media (min-width: 800px) {
             .main-layout { grid-template-columns: 2fr 1fr; }
-            .trainer-case { padding: 40px; }
             .display-section { height: 140px; }
         }
 
         .keypads {
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: clamp(12px, 2vh, 20px);
         }
 
         @media (min-width: 600px) {
             .keypads { flex-direction: row; }
         }
 
-        .grid { display: grid; gap: 10px; flex: 1; }
+        .grid { display: grid; gap: clamp(6px, 1.5vw, 10px); flex: 1; }
         .grid-blue { grid-template-columns: repeat(3, 1fr); }
         .grid-hex { grid-template-columns: repeat(4, 1fr); }
 
         .btn {
-            height: 60px;
+            height: clamp(45px, 7.5vh, 60px);
             border: none;
             border-radius: 8px;
             color: white;
             font-weight: 700;
-            font-size: 11px;
+            font-size: clamp(9px, 2.5vw, 11px);
             cursor: pointer;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             transition: 0.1s;
+            padding: 2px;
+            text-align: center;
         }
 
         .btn:active { transform: translateY(3px); filter: brightness(1.2); }
-        .btn span { font-size: 9px; opacity: 0.7; margin-top: 2px; }
+        .btn span { font-size: clamp(7px, 2vw, 9px); opacity: 0.7; margin-top: 2px; }
 
         .btn-blue { background: var(--btn-blue); box-shadow: 0 5px 0 #0d47a1; }
         .btn-dark { background: var(--btn-dark); box-shadow: 0 5px 0 #000; }
@@ -127,41 +168,49 @@
         .state-panel {
             background: rgba(255,255,255,0.03);
             border-radius: 12px;
-            padding: 15px;
+            padding: clamp(10px, 3vw, 15px);
             border: 1px solid #333;
         }
 
-        .state-title { font-size: 11px; color: #666; margin-bottom: 10px; }
+        .state-title { font-size: 11px; color: #666; margin-bottom: 10px; font-weight: 700; }
 
-        .reg-row {
+        #assembly-content {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: clamp(11px, 3vw, 13px);
+            color: #aaa;
+            line-height: 1.8;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        
+        .asm-line {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 8px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 14px;
             border-bottom: 1px solid #222;
-            padding-bottom: 4px;
+            padding: 2px 4px;
         }
 
-        .reg-row span { color: #888; }
-
-        .clear-ram {
-            width: 100%;
-            padding: 12px;
-            background: #3d1414;
-            border: none;
-            color: #ff5252;
-            border-radius: 6px;
-            cursor: pointer;
-            margin-top: 10px;
-            font-size: 11px;
-            font-weight: 700;
+        .asm-active {
+            background: #333;
+            color: #fff;
+            border-radius: 4px;
         }
     </style>
 </head>
 <body>
 
 <div class="trainer-case">
+    <div class="top-bar">
+        <button class="top-btn clear-btn" onclick="clearAll()">CLEAR RAM</button>
+        <button class="top-btn" onclick="toggleAssembly()">VIEW ASSEMBLY CODE</button>
+        <button class="top-btn" onclick="toggleFullScreen()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+            </svg>
+            FULLSCREEN
+        </button>
+    </div>
+
     <div class="display-section">
         <div class="led-digits" id="main-led">- 5Cb 85</div>
     </div>
@@ -185,7 +234,7 @@
                 
                 <button class="btn btn-blue">STRING<br><span>PRE</span></button>
                 <button class="btn btn-blue" onclick="op('NEXT')">MEMC<br><span>NEXT</span></button>
-                <button class="btn btn-orange" onclick="op('EXEC')">FILL</button>
+                <button class="btn btn-orange" onclick="op('EXEC')">FILL<br>.</button>
             </div>
 
             <div class="grid grid-hex">
@@ -211,33 +260,93 @@
             </div>
         </div>
 
-        <div class="state-panel">
-            <div class="state-title">CPU STATE</div>
-            <div class="reg-row"><span>A</span><b id="r-a">00</b></div>
-            <div class="reg-row"><span>B</span><b id="r-b">00</b></div>
-            <div class="reg-row"><span>C</span><b id="r-c">00</b></div>
-            <div class="reg-row"><span>H</span><b id="r-h">00</b></div>
-            <div class="reg-row"><span>L</span><b id="r-l">00</b></div>
-            <div class="reg-row"><span>FLAGS</span><b id="r-f">00</b></div>
-            <div class="reg-row"><span>PC</span><b id="r-pc">2000</b></div>
-            <button class="clear-ram" onclick="clearAll()">CLEAR RAM</button>
+        <div class="state-panel" id="machine-code-panel" style="display: none;">
+            <div class="state-title">MACHINE CODE</div>
+            <div id="assembly-content"></div>
         </div>
     </div>
 </div>
 
 <script>
+    // FULLSCREEN TOGGLE LOGIC
+    function toggleFullScreen() {
+        if (!document.fullscreenElement && !document.mozFullScreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen();
+            } else if (document.documentElement.msRequestFullscreen) {
+                document.documentElement.msRequestFullscreen();
+            } else if (document.documentElement.mozRequestFullScreen) {
+                document.documentElement.mozRequestFullScreen();
+            } else if (document.documentElement.webkitRequestFullscreen) {
+                document.documentElement.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
+            }
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            }
+        }
+    }
+
+    // SCROLL LOCK LOGIC FOR FULLSCREEN
+    const lockScroll = () => {
+        if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+    };
+
+    ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(event => {
+        document.addEventListener(event, lockScroll);
+    });
+
+    // ORIGINAL 8085 EMULATION LOGIC
     let ram = new Uint8Array(65536);
     let cpu = { a:0, b:0, c:0, h:0, l:0, pc:0x2000, cy:0 };
     let state = "BOOT";
     let addrBuffer = "";
     let dataBuffer = "";
     let currentAddr = 0x2000;
+    let showAssembly = false;
 
     const opNames = {
         0x3A: 'LDA', 0x47: 'MOV B,A', 0x80: 'ADD B',
         0x32: 'STA', 0xD2: 'JNC', 0x3E: 'MVI A',
         0xC3: 'JMP', 0x76: 'HLT', 0x06: 'MVI B'
     };
+
+    function toggleAssembly() {
+        showAssembly = !showAssembly;
+        document.getElementById('machine-code-panel').style.display = showAssembly ? 'block' : 'none';
+        if (showAssembly) renderAssembly();
+    }
+
+    function renderAssembly() {
+        if (!showAssembly) return;
+        
+        let endAddr = 0x200F; // Minimum view range
+        for(let i = 0x2000; i < 0x20FF; i++) {
+            if (ram[i] !== 0) endAddr = Math.max(endAddr, i);
+        }
+
+        let html = "";
+        for(let pc = 0x2000; pc <= endAddr; pc++) {
+            let op = ram[pc];
+            let hexA = pc.toString(16).toUpperCase().padStart(4, "0");
+            let hexD = op.toString(16).toUpperCase().padStart(2, "0");
+            let mnem = opNames[op] || "---";
+            let activeClass = (pc === currentAddr && state === "DATA_EDIT") ? "asm-active" : "";
+            
+            html += `<div class="asm-line ${activeClass}"><span>${hexA} : ${hexD}</span> <span>${mnem}</span></div>`;
+        }
+        document.getElementById('assembly-content').innerHTML = html;
+    }
 
     function update() {
         const led = document.getElementById('main-led');
@@ -261,11 +370,7 @@
             hud.innerText = `EDITING MEMORY | MNEMONIC: ${opNames[opHex] || "--"}`;
         }
 
-        // Update CPU state panel
-        document.getElementById('r-a').innerText = cpu.a.toString(16).toUpperCase().padStart(2, "0");
-        document.getElementById('r-b').innerText = cpu.b.toString(16).toUpperCase().padStart(2, "0");
-        document.getElementById('r-pc').innerText = cpu.pc.toString(16).toUpperCase().padStart(4, "0");
-        document.getElementById('r-f').innerText = (cpu.cy ? "CY=1" : "CY=0");
+        if (showAssembly) renderAssembly();
     }
 
     function hex(v) {
