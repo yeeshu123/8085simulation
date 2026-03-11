@@ -82,7 +82,6 @@
             background: #2a0e0e;
         }
 
-        /* 1:1 DISPLAY REPLICA - Scaled for Mobile */
         .display-section {
             background: #000;
             height: clamp(60px, 12vh, 100px);
@@ -100,6 +99,7 @@
             font-size: clamp(24px, 7vw, 64px);
             letter-spacing: clamp(3px, 1.5vw, 15px);
             text-shadow: 0 0 20px rgba(255, 46, 46, 0.4);
+            white-space: pre;
         }
 
         .status-hud {
@@ -121,7 +121,6 @@
             gap: clamp(12px, 2vh, 20px);
         }
 
-        /* Desktop Layout Override */
         @media (min-width: 800px) {
             .main-layout { grid-template-columns: 2fr 1fr; }
             .display-section { height: 140px; }
@@ -221,18 +220,18 @@
         <div class="keypads">
             <div class="grid grid-blue">
                 <button class="btn btn-blue" onclick="op('RESET')">RESET</button>
-                <button class="btn btn-blue">VCT<br>INT</button>
-                <button class="btn btn-blue">SHIFT</button>
+                <button class="btn btn-blue" onclick="op('VCT_INT')">VCT<br>INT</button>
+                <button class="btn btn-blue" onclick="op('SHIFT')">SHIFT</button>
                 
-                <button class="btn btn-blue">EXREG<br><span>SI</span></button>
-                <button class="btn btn-blue">INS<br><span>DATA</span></button>
-                <button class="btn btn-blue">DEL<br><span>DATA</span></button>
+                <button class="btn btn-blue" onclick="op('EXREG')">EXREG<br><span>SI</span></button>
+                <button class="btn btn-blue" onclick="op('INS')">INS<br><span>DATA</span></button>
+                <button class="btn btn-blue" onclick="op('DEL')">DEL<br><span>DATA</span></button>
                 
                 <button class="btn btn-blue" onclick="op('GO')">GO</button>
-                <button class="btn btn-blue">B.M</button>
+                <button class="btn btn-blue" onclick="op('BM')">B.M</button>
                 <button class="btn btn-blue" onclick="op('REL_EXMEM')">REL<br><span>EXMEM</span></button>
                 
-                <button class="btn btn-blue">STRING<br><span>PRE</span></button>
+                <button class="btn btn-blue" onclick="op('STRING')">STRING<br><span>PRE</span></button>
                 <button class="btn btn-blue" onclick="op('NEXT')">MEMC<br><span>NEXT</span></button>
                 <button class="btn btn-orange" onclick="op('EXEC')">FILL<br>.</button>
             </div>
@@ -268,7 +267,6 @@
 </div>
 
 <script>
-    // FULLSCREEN TOGGLE LOGIC
     function toggleFullScreen() {
         if (!document.fullscreenElement && !document.mozFullScreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
             if (document.documentElement.requestFullscreen) {
@@ -281,19 +279,13 @@
                 document.documentElement.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
             }
         } else {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            } else if (document.msExitFullscreen) {
-                document.msExitFullscreen();
-            } else if (document.mozCancelFullScreen) {
-                document.mozCancelFullScreen();
-            } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
-            }
+            if (document.exitFullscreen) document.exitFullscreen();
+            else if (document.msExitFullscreen) document.msExitFullscreen();
+            else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
         }
     }
 
-    // SCROLL LOCK LOGIC FOR FULLSCREEN
     const lockScroll = () => {
         if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
             document.body.style.overflow = 'hidden';
@@ -306,21 +298,38 @@
         document.addEventListener(event, lockScroll);
     });
 
-    // ORIGINAL 8085 EMULATION LOGIC
     let ram = new Uint8Array(65536);
-    let cpu = { a:0, b:0, c:0, h:0, l:0, pc:0x2000, cy:0 };
+    let cpu = { a:0, b:0, c:0, d:0, e:0, f:0, h:0, l:0, pc:0x2000, sp:0xFFFF, cy:0 };
     let state = "BOOT";
     let addrBuffer = "";
     let dataBuffer = "";
     let currentAddr = 0x2000;
     let showAssembly = false;
+    
+    // NEW VARIABLES FOR EXTRA BUTTONS
+    let currentReg = "";
+    let isShifted = false;
 
-    const opNames = {
-        0x3A: 'LDA', 0x47: 'MOV B,A', 0x80: 'ADD B',
-        0x32: 'STA', 0xD2: 'JNC', 0x3E: 'MVI A',
-        0xC3: 'JMP', 0x76: 'HLT', 0x06: 'MVI B'
+const opNames = {
+        0x00: 'NOP', 0x01: 'LXI B', 0x02: 'STAX B', 0x03: 'INX B', 0x04: 'INR B', 0x05: 'DCR B', 0x06: 'MVI B', 0x09: 'DAD B', 0x0A: 'LDAX B', 0x0B: 'DCX B', 0x0C: 'INR C', 0x0D: 'DCR C', 0x0E: 'MVI C', 0x0F: 'RRC',
+        0x11: 'LXI D', 0x12: 'STAX D', 0x13: 'INX D', 0x14: 'INR D', 0x15: 'DCR D', 0x16: 'MVI D', 0x19: 'DAD D', 0x1A: 'LDAX D', 0x1B: 'DCX D', 0x1C: 'INR E', 0x1D: 'DCR E', 0x1E: 'MVI E', 0x1F: 'RAR',
+        0x21: 'LXI H', 0x22: 'SHLD', 0x23: 'INX H', 0x24: 'INR H', 0x25: 'DCR H', 0x26: 'MVI H', 0x29: 'DAD H', 0x2A: 'LHLD', 0x2B: 'DCX H', 0x2C: 'INR L', 0x2D: 'DCR L', 0x2E: 'MVI L', 0x2F: 'CMA',
+        0x31: 'LXI SP', 0x32: 'STA', 0x33: 'INX SP', 0x34: 'INR M', 0x35: 'DCR M', 0x36: 'MVI M', 0x39: 'DAD SP', 0x3A: 'LDA', 0x3B: 'DCX SP', 0x3C: 'INR A', 0x3D: 'DCR A', 0x3E: 'MVI A', 0x3F: 'CMC',
+        0x40: 'MOV B,B', 0x41: 'MOV B,C', 0x42: 'MOV B,D', 0x43: 'MOV B,E', 0x44: 'MOV B,H', 0x45: 'MOV B,L', 0x46: 'MOV B,M', 0x47: 'MOV B,A',
+        0x48: 'MOV C,B', 0x49: 'MOV C,C', 0x4A: 'MOV C,D', 0x4B: 'MOV C,E', 0x4C: 'MOV C,H', 0x4D: 'MOV C,L', 0x4E: 'MOV C,M', 0x4F: 'MOV C,A',
+        0x50: 'MOV D,B', 0x51: 'MOV D,C', 0x52: 'MOV D,D', 0x53: 'MOV D,E', 0x54: 'MOV D,H', 0x55: 'MOV D,L', 0x56: 'MOV D,M', 0x57: 'MOV D,A',
+        0x58: 'MOV E,B', 0x59: 'MOV E,C', 0x5A: 'MOV E,D', 0x5B: 'MOV E,E', 0x5C: 'MOV E,H', 0x5D: 'MOV E,L', 0x5E: 'MOV E,M', 0x5F: 'MOV E,A',
+        0x60: 'MOV H,B', 0x61: 'MOV H,C', 0x62: 'MOV H,D', 0x63: 'MOV H,E', 0x64: 'MOV H,H', 0x65: 'MOV H,L', 0x66: 'MOV H,M', 0x67: 'MOV H,A',
+        0x68: 'MOV L,B', 0x69: 'MOV L,C', 0x6A: 'MOV L,D', 0x6B: 'MOV L,E', 0x6C: 'MOV L,H', 0x6D: 'MOV L,L', 0x6E: 'MOV L,M', 0x6F: 'MOV L,A',
+        0x70: 'MOV M,B', 0x71: 'MOV M,C', 0x72: 'MOV M,D', 0x73: 'MOV M,E', 0x74: 'MOV M,H', 0x75: 'MOV M,L', 0x76: 'HLT', 0x77: 'MOV M,A',
+        0x78: 'MOV A,B', 0x79: 'MOV A,C', 0x7A: 'MOV A,D', 0x7B: 'MOV A,E', 0x7C: 'MOV A,H', 0x7D: 'MOV A,L', 0x7E: 'MOV A,M', 0x7F: 'MOV A,A',
+        0x80: 'ADD B', 0x81: 'ADD C', 0x82: 'ADD D', 0x83: 'ADD E', 0x84: 'ADD H', 0x85: 'ADD L', 0x86: 'ADD M', 0x87: 'ADD A',
+        0x90: 'SUB B', 0x91: 'SUB C', 0x92: 'SUB D', 0x93: 'SUB E', 0x94: 'SUB H', 0x95: 'SUB L', 0x96: 'SUB M', 0x97: 'SUB A',
+        0xA0: 'ANA B', 0xA1: 'ANA C', 0xA2: 'ANA D', 0xA3: 'ANA E', 0xA4: 'ANA H', 0xA5: 'ANA L', 0xA6: 'ANA M', 0xA7: 'ANA A',
+        0xB0: 'ORA B', 0xB1: 'ORA C', 0xB2: 'ORA D', 0xB3: 'ORA E', 0xB4: 'ORA H', 0xB5: 'ORA L', 0xB6: 'ORA M', 0xB7: 'ORA A',
+        0xAF: 'XRA A', 0xFE: 'CPI', 0xC3: 'JMP', 0xC6: 'ADI', 0xC9: 'RET', 0xCA: 'JZ', 0xCD: 'CALL', 0xD2: 'JNC', 0xD6: 'SUI',
+        0xE6: 'ANI', 0xF6: 'ORI', 0xC5: 'PUSH B', 0xC1: 'POP B', 0xD5: 'PUSH D', 0xD1: 'POP D', 0xE5: 'PUSH H', 0xE1: 'POP H', 0xF5: 'PUSH PSW', 0xF1: 'POP PSW'
     };
-
     function toggleAssembly() {
         showAssembly = !showAssembly;
         document.getElementById('machine-code-panel').style.display = showAssembly ? 'block' : 'none';
@@ -330,7 +339,7 @@
     function renderAssembly() {
         if (!showAssembly) return;
         
-        let endAddr = 0x200F; // Minimum view range
+        let endAddr = 0x200F;
         for(let i = 0x2000; i < 0x20FF; i++) {
             if (ram[i] !== 0) endAddr = Math.max(endAddr, i);
         }
@@ -352,29 +361,66 @@
         const led = document.getElementById('main-led');
         const hud = document.getElementById('hud');
 
+        let shiftStatus = isShifted ? "[SHIFT] " : "";
+
         if (state === "BOOT") {
             led.innerText = "- 5Cb 85";
-            hud.innerText = "SYSTEM READY - PRESS REL EXMEM TO EDIT";
+            hud.innerText = shiftStatus + "SYSTEM READY - PRESS REL EXMEM TO EDIT";
         } else if (state === "ADDR_WAIT") {
             led.innerText = (addrBuffer.padEnd(4, "-")) + "  .";
-            hud.innerText = "ENTER MEMORY ADDRESS + PRESS MEMC NEXT";
+            hud.innerText = shiftStatus + "ENTER MEMORY ADDRESS + PRESS MEMC NEXT";
         } else if (state === "GO_WAIT") {
             led.innerText = (addrBuffer.padEnd(4, "-")) + "  .";
-            hud.innerText = "ENTER START ADDRESS + PRESS FILL TO EXECUTE";
+            hud.innerText = shiftStatus + "ENTER START ADDRESS + PRESS FILL TO EXECUTE";
         } else if (state === "DATA_EDIT") {
             let a = currentAddr.toString(16).toUpperCase().padStart(4, "0");
             let d = dataBuffer !== "" ? dataBuffer.padStart(2, "0") : ram[currentAddr].toString(16).toUpperCase().padStart(2, "0");
             led.innerText = `${a}  ${d}`;
-            
             let opHex = ram[currentAddr];
-            hud.innerText = `EDITING MEMORY | MNEMONIC: ${opNames[opHex] || "--"}`;
+            hud.innerText = shiftStatus + `EDITING MEMORY | MNEMONIC: ${opNames[opHex] || "--"}`;
+        } 
+        // --- NEW UPDATE LOGIC ---
+        else if (state === "REG_WAIT") {
+            led.innerText = "rE6   .";
+            hud.innerText = shiftStatus + "PRESS HEX KEY TO SELECT REGISTER (A,B,C,D,E,F,4=PCH,5=PCL)";
+        } else if (state === "REG_EDIT") {
+            let regName = currentReg;
+            if (currentReg === '4') regName = "PCH";
+            if (currentReg === '5') regName = "PCL";
+            if (currentReg === '6') regName = "SPH";
+            if (currentReg === '7') regName = "SPL";
+
+            let val = 0;
+            if (currentReg === 'A') val = cpu.a || 0;
+            else if (currentReg === 'B') val = cpu.b || 0;
+            else if (currentReg === 'C') val = cpu.c || 0;
+            else if (currentReg === 'D') val = cpu.d || 0;
+            else if (currentReg === 'E') val = cpu.e || 0;
+            else if (currentReg === 'F') val = cpu.f || 0;
+            else if (currentReg === '4') val = (cpu.pc >> 8) & 0xFF;
+            else if (currentReg === '5') val = cpu.pc & 0xFF;
+            else if (currentReg === '6') val = (cpu.sp >> 8) & 0xFF;
+            else if (currentReg === '7') val = cpu.sp & 0xFF;
+
+            let d = dataBuffer !== "" ? dataBuffer.padStart(2, "0") : val.toString(16).toUpperCase().padStart(2, "0");
+            led.innerText = `${regName.padEnd(4, " ")}  ${d}`;
+            hud.innerText = shiftStatus + `EDITING REGISTER ${regName}`;
+        } else if (state === "BM_WAIT") {
+            led.innerText = "bL C  .";
+            hud.innerText = shiftStatus + "BLOCK MOVE MODE ACTIVE";
+        } else if (state === "VCT_WAIT") {
+            led.innerText = "UCE   .";
+            hud.innerText = shiftStatus + "VECTOR INTERRUPT MODE";
+        } else if (state === "STRING_WAIT") {
+            led.innerText = "Str   .";
+            hud.innerText = shiftStatus + "STRING PREPARATION MODE";
         }
 
         if (showAssembly) renderAssembly();
     }
 
     function hex(v) {
-        if (state === "BOOT") return;
+        if (state === "BOOT" || state === "BM_WAIT" || state === "VCT_WAIT" || state === "STRING_WAIT") return;
         
         if (state === "ADDR_WAIT" || state === "GO_WAIT") {
             addrBuffer += v;
@@ -383,15 +429,40 @@
             dataBuffer += v;
             if (dataBuffer.length > 2) dataBuffer = dataBuffer.slice(-2);
             ram[currentAddr] = parseInt(dataBuffer, 16);
+        } 
+        // --- NEW HEX LOGIC ---
+        else if (state === "REG_WAIT") {
+            const validRegs = ['A','B','C','D','E','F','4','5','6','7'];
+            if (validRegs.includes(v)) {
+                currentReg = v;
+                state = "REG_EDIT";
+                dataBuffer = "";
+            }
+        } else if (state === "REG_EDIT") {
+            dataBuffer += v;
+            if (dataBuffer.length > 2) dataBuffer = dataBuffer.slice(-2);
+            let val = parseInt(dataBuffer, 16);
+            if (currentReg === 'A') cpu.a = val;
+            else if (currentReg === 'B') cpu.b = val;
+            else if (currentReg === 'C') cpu.c = val;
+            else if (currentReg === 'D') cpu.d = val;
+            else if (currentReg === 'E') cpu.e = val;
+            else if (currentReg === 'F') cpu.f = val;
+            else if (currentReg === '4') cpu.pc = (val << 8) | (cpu.pc & 0x00FF);
+            else if (currentReg === '5') cpu.pc = (cpu.pc & 0xFF00) | val;
+            else if (currentReg === '6') cpu.sp = (val << 8) | (cpu.sp & 0x00FF);
+            else if (currentReg === '7') cpu.sp = (cpu.sp & 0xFF00) | val;
         }
         update();
     }
 
     function op(cmd) {
+        // --- YOUR EXISTING WORKING LOGIC ---
         if (cmd === 'RESET') {
             state = "BOOT";
             addrBuffer = "";
             dataBuffer = "";
+            isShifted = false;
         } else if (cmd === 'REL_EXMEM') {
             state = "ADDR_WAIT";
             addrBuffer = "";
@@ -403,6 +474,9 @@
             } else if (state === "DATA_EDIT") {
                 currentAddr = (currentAddr + 1) & 0xFFFF;
                 dataBuffer = "";
+            } else if (state === "REG_EDIT") {
+                state = "REG_WAIT";
+                currentReg = "";
             }
         } else if (cmd === 'GO') {
             state = "GO_WAIT";
@@ -415,42 +489,172 @@
                 update();
                 setTimeout(() => alert("EXECUTION COMPLETE. Press REL EXMEM to check results."), 100);
             }
+        } 
+        // --- NEW BUTTON LOGIC ---
+        else if (cmd === 'SHIFT') {
+            isShifted = !isShifted;
+        } else if (cmd === 'EXREG') {
+            state = "REG_WAIT";
+            currentReg = "";
+            dataBuffer = "";
+        } else if (cmd === 'INS') {
+            if (state === "DATA_EDIT") {
+                ram.copyWithin(currentAddr + 1, currentAddr, 65535);
+                ram[currentAddr] = 0; 
+                dataBuffer = "";
+            }
+        } else if (cmd === 'DEL') {
+            if (state === "DATA_EDIT") {
+                ram.copyWithin(currentAddr, currentAddr + 1, 65536);
+                dataBuffer = "";
+            }
+        } else if (cmd === 'BM') {
+            state = "BM_WAIT";
+        } else if (cmd === 'VCT_INT') {
+            state = "VCT_WAIT";
+        } else if (cmd === 'STRING') {
+            state = "STRING_WAIT";
         }
+        
         update();
     }
 
     function runProgram(start) {
         cpu.pc = start;
-        cpu.cy = 0; 
+        cpu.cy = 0; cpu.z = 0; cpu.s = 0; cpu.p = 0; // Initialize all flags
         let limit = 0;
+
+        // HELPER FUNCTIONS FOR CLEAN EXECUTION
+        const getReg = (code) => {
+            if (code === 0) return cpu.b; if (code === 1) return cpu.c;
+            if (code === 2) return cpu.d; if (code === 3) return cpu.e;
+            if (code === 4) return cpu.h; if (code === 5) return cpu.l;
+            if (code === 6) return ram[(cpu.h << 8) | cpu.l]; // M Register
+            if (code === 7) return cpu.a;
+        };
+        const setReg = (code, val) => {
+            val = val & 0xFF;
+            if (code === 0) cpu.b = val; else if (code === 1) cpu.c = val;
+            else if (code === 2) cpu.d = val; else if (code === 3) cpu.e = val;
+            else if (code === 4) cpu.h = val; else if (code === 5) cpu.l = val;
+            else if (code === 6) ram[(cpu.h << 8) | cpu.l] = val; // M Register
+            else if (code === 7) cpu.a = val;
+        };
+        const updateFlags = (val) => {
+            cpu.z = (val === 0) ? 1 : 0;
+            cpu.s = (val & 0x80) ? 1 : 0;
+            let p = 0; for(let i=0; i<8; i++) { if((val>>i)&1) p++; }
+            cpu.p = (p % 2 === 0) ? 1 : 0;
+        };
+        const push = (val1, val2) => {
+            ram[--cpu.sp] = val1; ram[--cpu.sp] = val2;
+        };
+        const pop = () => {
+            let l = ram[cpu.sp++]; let h = ram[cpu.sp++]; return {h, l};
+        };
         
-        while(limit < 1000) {
+        while(limit < 50000) { // Increased limit for larger programs
             let currOp = ram[cpu.pc++];
             
             if (currOp === 0x76) { // HLT
                 break;
+            } 
+            // DYNAMIC DECODING FOR MOV INSTRUCTIONS (0x40 to 0x7F)
+            else if (currOp >= 0x40 && currOp <= 0x7F && currOp !== 0x76) {
+                let dest = (currOp >> 3) & 0x07;
+                let src = currOp & 0x07;
+                setReg(dest, getReg(src));
+            }
+            // DYNAMIC DECODING FOR ADD INSTRUCTIONS (0x80 to 0x87)
+            else if (currOp >= 0x80 && currOp <= 0x87) {
+                let src = currOp & 0x07;
+                let sum = cpu.a + getReg(src);
+                cpu.cy = (sum > 255) ? 1 : 0;
+                cpu.a = sum & 0xFF;
+                updateFlags(cpu.a);
+            }
+            // DYNAMIC DECODING FOR SUB INSTRUCTIONS (0x90 to 0x97)
+            else if (currOp >= 0x90 && currOp <= 0x97) {
+                let src = currOp & 0x07;
+                let diff = cpu.a - getReg(src);
+                cpu.cy = (diff < 0) ? 1 : 0;
+                cpu.a = diff & 0xFF;
+                updateFlags(cpu.a);
+            }
+            // DYNAMIC DECODING FOR MVI INSTRUCTIONS (Ends in 6 or E)
+            else if ((currOp & 0xC7) === 0x06) {
+                let dest = (currOp >> 3) & 0x07;
+                setReg(dest, ram[cpu.pc++]);
+            }
+            // DYNAMIC DECODING FOR INR INSTRUCTIONS (Ends in 4 or C)
+            else if ((currOp & 0xC7) === 0x04) {
+                let dest = (currOp >> 3) & 0x07;
+                let val = (getReg(dest) + 1) & 0xFF;
+                setReg(dest, val);
+                updateFlags(val);
+            }
+            // DYNAMIC DECODING FOR DCR INSTRUCTIONS (Ends in 5 or D)
+            else if ((currOp & 0xC7) === 0x05) {
+                let dest = (currOp >> 3) & 0x07;
+                let val = (getReg(dest) - 1) & 0xFF;
+                setReg(dest, val);
+                updateFlags(val);
+            }
+
+            // --- SPECIFIC HARDCODED OPCODES ---
+            else if (currOp === 0x00) { // NOP
+                continue;
             } else if (currOp === 0x3A) { // LDA
                 let l = ram[cpu.pc++]; let h = ram[cpu.pc++];
                 cpu.a = ram[(h << 8) | l];
-            } else if (currOp === 0x47) { // MOV B,A
-                cpu.b = cpu.a;
-            } else if (currOp === 0x80) { // ADD B
-                let sum = cpu.a + cpu.b;
-                if (sum > 255) { cpu.cy = 1; } else { cpu.cy = 0; }
-                cpu.a = sum & 0xFF;
             } else if (currOp === 0x32) { // STA
                 let l = ram[cpu.pc++]; let h = ram[cpu.pc++];
                 ram[(h << 8) | l] = cpu.a;
-            } else if (currOp === 0xD2) { // JNC
-                let l = ram[cpu.pc++]; let h = ram[cpu.pc++];
-                if (cpu.cy === 0) { cpu.pc = (h << 8) | l; }
-            } else if (currOp === 0x3E) { // MVI A
-                cpu.a = ram[cpu.pc++];
             } else if (currOp === 0xC3) { // JMP
                 let l = ram[cpu.pc++]; let h = ram[cpu.pc++];
                 cpu.pc = (h << 8) | l;
-            } else if (currOp === 0x06) { // MVI B
-                cpu.b = ram[cpu.pc++];
+            } else if (currOp === 0xCA) { // JZ (Jump if Zero)
+                let l = ram[cpu.pc++]; let h = ram[cpu.pc++];
+                if (cpu.z === 1) cpu.pc = (h << 8) | l;
+            } else if (currOp === 0xC2) { // JNZ (Jump if Not Zero)
+                let l = ram[cpu.pc++]; let h = ram[cpu.pc++];
+                if (cpu.z === 0) cpu.pc = (h << 8) | l;
+            } else if (currOp === 0xD2) { // JNC (Jump if No Carry)
+                let l = ram[cpu.pc++]; let h = ram[cpu.pc++];
+                if (cpu.cy === 0) cpu.pc = (h << 8) | l;
+            } else if (currOp === 0xDA) { // JC (Jump if Carry)
+                let l = ram[cpu.pc++]; let h = ram[cpu.pc++];
+                if (cpu.cy === 1) cpu.pc = (h << 8) | l;
+            } else if (currOp === 0xCD) { // CALL
+                let l = ram[cpu.pc++]; let h = ram[cpu.pc++];
+                push((cpu.pc >> 8) & 0xFF, cpu.pc & 0xFF);
+                cpu.pc = (h << 8) | l;
+            } else if (currOp === 0xC9) { // RET
+                let p = pop();
+                cpu.pc = (p.h << 8) | p.l;
+            } else if (currOp === 0x01) { // LXI B
+                cpu.c = ram[cpu.pc++]; cpu.b = ram[cpu.pc++];
+            } else if (currOp === 0x11) { // LXI D
+                cpu.e = ram[cpu.pc++]; cpu.d = ram[cpu.pc++];
+            } else if (currOp === 0x21) { // LXI H
+                cpu.l = ram[cpu.pc++]; cpu.h = ram[cpu.pc++];
+            } else if (currOp === 0xC6) { // ADI
+                let sum = cpu.a + ram[cpu.pc++];
+                cpu.cy = (sum > 255) ? 1 : 0;
+                cpu.a = sum & 0xFF;
+                updateFlags(cpu.a);
+            } else if (currOp === 0xD6) { // SUI
+                let diff = cpu.a - ram[cpu.pc++];
+                cpu.cy = (diff < 0) ? 1 : 0;
+                cpu.a = diff & 0xFF;
+                updateFlags(cpu.a);
+            } else if (currOp === 0xE6) { // ANI
+                cpu.a = cpu.a & ram[cpu.pc++];
+                cpu.cy = 0; updateFlags(cpu.a);
+            } else if (currOp === 0xFE) { // CPI
+                let diff = cpu.a - ram[cpu.pc++];
+                cpu.cy = (diff < 0) ? 1 : 0;
+                updateFlags(diff & 0xFF);
             }
             limit++;
         }
